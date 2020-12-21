@@ -27,12 +27,45 @@
         height: 180px;
         background-color: #f5f5f5;
       }
+
+      #file-input {
+      	margin: 15px 0;
+      }
+
+      .host-search {
+      	margin-top: 10px;
+      }
     </style>
 </head>
 <body>
 	<div id="app" class="container">
+	
 	<input type="file" id="file-input" v-on:change="readSingleFile">
-	<h3>Contents of the file:</h3>
+	<form class="row form-inline">
+		<div class="form-group">
+			<input type="text" class="form-control" placeholder="Search port. Example: 80" v-model="search">
+		</div>
+		
+		<!-- <input type="text" placeholder="Search port. Example: 80" v-model="search"> -->
+		<button class="btn btn-sm btn-success" v-on:click="searchHosts">search</button>
+
+		<input type="radio" id="https" name="protocol" value="https" v-model="proto">
+		<label for="https">https</label>
+
+		<input type="radio" id="http" name="protocol" value="http" v-model="proto">
+		<label for="http">http</label>
+
+		<input type="radio" id="non-protocol" name="protocol" value="none" v-model="proto">
+		<label for="non-protocol">none</label>
+
+		<button class="btn btn-sm btn-danger" v-on:click.prevent="clearSearch">Clear</button>
+
+
+		<button class="btn btn-sm btn-success" v-on:click.prevent="download">Download</button>
+	</form>
+	<ul class="host-search">
+		<li v-for="host in port_search_result"><span v-if="proto == 'https'">https://</span><span v-if="proto == 'http'">http://</span>{{ host.ip }}:{{ host.port }}</li>
+	</ul>
 	<h2 id="onlinehosts" class="target">Online Hosts</h2>
 <div v-for="ip in ips">
 	<div class="panel panel-default">
@@ -80,7 +113,10 @@
 	let app = new Vue({
 	  el: '#app',
 	  data: {
-	    ips: []
+	    ips: [],
+	    search: "",
+	    port_search_result: [],
+	    proto: ""
 	  },
 	  methods:{
 	  	readSingleFile: function(event) {
@@ -110,7 +146,37 @@
 				}
 			}
 			this.ips = unique_data;
-	  	}
+	  	},
+	  	searchHosts: function(event){
+	  		event.preventDefault();
+	  		if(this.search){
+	  			let result = [];
+	  			for (let i = 0; i < this.ips.length; i++){
+	  				for (let j = 0; j < this.ips[i].ports.length; j++){
+	  					if (this.ips[i].ports[j].port == this.search){
+	  						result.push({ip: this.ips[i].ip, port: this.ips[i].ports[j].port})
+	  					}
+	  				}
+	  			}
+	  			this.port_search_result = result;
+	  		}
+	  	},
+	  	clearSearch: function(){
+	  		this.port_search_result = [];
+	  	},
+
+	  	download: function(){
+			let raw_hosts = document.querySelectorAll("ul.host-search li");
+			let hosts = []
+			for (let i = 0; i < raw_hosts.length; i++){
+				hosts.push(raw_hosts[i].innerText);
+			}
+			let atag = document.createElement("a");
+			let file = new Blob([hosts.join('\n')], {type: 'text/plain'});
+			atag.href = URL.createObjectURL(file);
+			atag.download = "hosts.txt";
+			atag.click();
+		}
 	  }
 	});
 </script>
